@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { Todo } from "../models/todo";
 import type { Category } from "../models/category";
+import Spinner from "../components/Spinner";
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -67,7 +68,7 @@ export default function ViewTodosPage() {
   };
 
   if (loading) {
-    return <div className="page">Loading...</div>;
+    return <Spinner />;
   }
 
   return (

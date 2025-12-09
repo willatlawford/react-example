@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Category, CategoryCreate } from "../models/category";
+import Spinner from "../components/Spinner";
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -107,7 +108,7 @@ export default function ManageCategoriesPage() {
       <section className="list-section">
         <h2>Existing Categories</h2>
         {loading ? (
-          <p>Loading...</p>
+          <Spinner />
         ) : categories.length === 0 ? (
           <p className="empty-state">No categories found. Create one!</p>
         ) : (
