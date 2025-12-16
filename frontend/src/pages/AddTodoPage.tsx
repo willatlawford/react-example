@@ -1,30 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Category } from "../models/category";
 import type { TodoCreate } from "../models/todo";
-
-const API_BASE = "http://localhost:8000/api";
+import { useCategoriesQuery } from "../api/queries/categories";
+import { useCreateTodoMutation } from "../api/mutations/todos";
 
 export default function AddTodoPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetch(`${API_BASE}/categories`)
-      .then((res) => res.json())
-      .then((data) => setCategories(data))
-      .catch((err) => console.error("Failed to load categories:", err));
-  }, []);
+  const { data: categories = [] } = useCategoriesQuery();
+  const createTodoMutation = useCreateTodoMutation();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
 
     const todo: TodoCreate = {
       title,
@@ -32,29 +22,23 @@ export default function AddTodoPage() {
       category_id: categoryId,
     };
 
-    try {
-      const res = await fetch(`${API_BASE}/todos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(todo),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to create todo");
-      }
-
-      navigate("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
+    createTodoMutation.mutate(todo, {
+      onSuccess: () => {
+        navigate("/");
+      },
+    });
   };
 
   return (
     <div className="page">
       <h1>Add Todo</h1>
-      {error && <div className="error">{error}</div>}
+      {createTodoMutation.isError && (
+        <div className="error">
+          {createTodoMutation.error instanceof Error
+            ? createTodoMutation.error.message
+            : "Failed to create todo"}
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="title">Title</label>
@@ -94,8 +78,8 @@ export default function AddTodoPage() {
             ))}
           </select>
         </div>
-        <button type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create Todo"}
+        <button type="submit" disabled={createTodoMutation.isPending}>
+          {createTodoMutation.isPending ? "Creating..." : "Create Todo"}
         </button>
       </form>
     </div>

@@ -1,73 +1,38 @@
-import { useState, useEffect } from "react";
-import type { Category, CategoryCreate } from "../models/category";
+import { useState } from "react";
+import type { CategoryCreate } from "../models/category";
 import Spinner from "../components/Spinner";
-
-const API_BASE = "http://localhost:8000/api";
+import { useCategoriesQuery } from "../api/queries/categories";
+import {
+  useCreateCategoryMutation,
+  useDeleteCategoryMutation,
+} from "../api/mutations/categories";
 
 export default function ManageCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchCategories = () => {
-    setLoading(true);
-    fetch(`${API_BASE}/categories`)
-      .then((res) => res.json())
-      .then((data) => setCategories(data))
-      .catch((err) => console.error("Failed to load categories:", err))
-      .finally(() => setLoading(false));
-  };
+  const { data: categories = [], isLoading } = useCategoriesQuery();
+  const createCategoryMutation = useCreateCategoryMutation();
+  const deleteCategoryMutation = useDeleteCategoryMutation();
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
 
     const category: CategoryCreate = {
       name,
       description: description || null,
     };
 
-    try {
-      const res = await fetch(`${API_BASE}/categories`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(category),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to create category");
-      }
-
-      setName("");
-      setDescription("");
-      fetchCategories();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setSubmitting(false);
-    }
+    createCategoryMutation.mutate(category, {
+      onSuccess: () => {
+        setName("");
+        setDescription("");
+      },
+    });
   };
 
-  const deleteCategory = async (id: number) => {
-    try {
-      const res = await fetch(`${API_BASE}/categories/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("Failed to delete category");
-
-      setCategories((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
-      console.error("Failed to delete category:", err);
-    }
+  const handleDelete = (id: number) => {
+    deleteCategoryMutation.mutate(id);
   };
 
   return (
@@ -76,7 +41,13 @@ export default function ManageCategoriesPage() {
 
       <section className="form-section">
         <h2>Add New Category</h2>
-        {error && <div className="error">{error}</div>}
+        {createCategoryMutation.isError && (
+          <div className="error">
+            {createCategoryMutation.error instanceof Error
+              ? createCategoryMutation.error.message
+              : "Failed to create category"}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="name">Name</label>
@@ -99,15 +70,15 @@ export default function ManageCategoriesPage() {
               rows={2}
             />
           </div>
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Adding..." : "Add Category"}
+          <button type="submit" disabled={createCategoryMutation.isPending}>
+            {createCategoryMutation.isPending ? "Adding..." : "Add Category"}
           </button>
         </form>
       </section>
 
       <section className="list-section">
         <h2>Existing Categories</h2>
-        {loading ? (
+        {isLoading ? (
           <Spinner />
         ) : categories.length === 0 ? (
           <p className="empty-state">No categories found. Create one!</p>
@@ -125,7 +96,7 @@ export default function ManageCategoriesPage() {
                 </div>
                 <button
                   className="delete-btn"
-                  onClick={() => deleteCategory(category.id)}
+                  onClick={() => handleDelete(category.id)}
                 >
                   Delete
                 </button>

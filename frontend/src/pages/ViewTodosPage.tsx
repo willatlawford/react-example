@@ -1,74 +1,41 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Todo } from "../models/todo";
-import type { Category } from "../models/category";
 import Spinner from "../components/Spinner";
-
-const API_BASE = "http://localhost:8000/api";
+import { useTodosQuery } from "../api/queries/todos";
+import { useCategoriesQuery } from "../api/queries/categories";
+import { useUpdateTodoMutation, useDeleteTodoMutation } from "../api/mutations/todos";
 
 export default function ViewTodosPage() {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [filterCategory, setFilterCategory] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    fetch(`${API_BASE}/categories`)
-      .then((res) => res.json())
-      .then((data) => setCategories(data))
-      .catch((err) => console.error("Failed to load categories:", err));
-  }, []);
+  const { data: todos = [], isLoading: todosLoading } = useTodosQuery(filterCategory);
+  const { data: categories = [] } = useCategoriesQuery();
+  const updateTodoMutation = useUpdateTodoMutation();
+  const deleteTodoMutation = useDeleteTodoMutation();
 
-  useEffect(() => {
-    setLoading(true);
-    const url = filterCategory
-      ? `${API_BASE}/todos?category_id=${filterCategory}`
-      : `${API_BASE}/todos`;
-
-    fetch(url)
-      .then((res) => res.json())
-      .then((data) => setTodos(data))
-      .catch((err) => console.error("Failed to load todos:", err))
-      .finally(() => setLoading(false));
-  }, [filterCategory]);
-
-  const toggleComplete = async (todo: Todo) => {
-    try {
-      const res = await fetch(`${API_BASE}/todos/${todo.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: !todo.completed }),
-      });
-
-      if (!res.ok) throw new Error("Failed to update todo");
-
-      const updated = await res.json();
-      setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      if (selectedTodo?.id === updated.id) {
-        setSelectedTodo(updated);
+  const toggleComplete = (todo: Todo) => {
+    updateTodoMutation.mutate(
+      { id: todo.id, data: { completed: !todo.completed } },
+      {
+        onSuccess: (updated) => {
+          if (selectedTodo?.id === updated.id) {
+            setSelectedTodo(updated);
+          }
+        },
       }
-    } catch (err) {
-      console.error("Failed to update todo:", err);
-    }
+    );
   };
 
-  const deleteTodo = async (id: number) => {
-    try {
-      const res = await fetch(`${API_BASE}/todos/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("Failed to delete todo");
-
-      setTodos((prev) => prev.filter((t) => t.id !== id));
-      if (selectedTodo?.id === id) {
-        setSelectedTodo(null);
-      }
-    } catch (err) {
-      console.error("Failed to delete todo:", err);
-    }
+  const handleDelete = (id: number) => {
+    deleteTodoMutation.mutate(id, {
+      onSuccess: () => {
+        if (selectedTodo?.id === id) {
+          setSelectedTodo(null);
+        }
+      },
+    });
   };
 
   const getCategoryName = (categoryId: number | null) => {
@@ -86,30 +53,20 @@ export default function ViewTodosPage() {
     setEditingTitle("");
   };
 
-  const saveTitle = async () => {
+  const saveTitle = () => {
     if (!selectedTodo || editingTitle === selectedTodo.title) return;
 
-    setIsSaving(true);
-    try {
-      const res = await fetch(`${API_BASE}/todos/${selectedTodo.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: editingTitle }),
-      });
-
-      if (!res.ok) throw new Error("Failed to update todo");
-
-      const updated = await res.json();
-      setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      setSelectedTodo(updated);
-    } catch (err) {
-      console.error("Failed to update todo:", err);
-    } finally {
-      setIsSaving(false);
-    }
+    updateTodoMutation.mutate(
+      { id: selectedTodo.id, data: { title: editingTitle } },
+      {
+        onSuccess: (updated) => {
+          setSelectedTodo(updated);
+        },
+      }
+    );
   };
 
-  if (loading) {
+  if (todosLoading) {
     return <Spinner />;
   }
 
@@ -161,7 +118,7 @@ export default function ViewTodosPage() {
               </div>
               <button
                 className="delete-btn"
-                onClick={() => deleteTodo(todo.id)}
+                onClick={() => handleDelete(todo.id)}
               >
                 Delete
               </button>
@@ -198,7 +155,9 @@ export default function ViewTodosPage() {
                     if (e.key === "Enter") saveTitle();
                   }}
                 />
-                {isSaving && <span className="saving-indicator">Saving...</span>}
+                {updateTodoMutation.isPending && (
+                  <span className="saving-indicator">Saving...</span>
+                )}
               </div>
 
               <div className="todo-meta">
