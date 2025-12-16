@@ -149,6 +149,27 @@ button:disabled {
 
 .todo-title {
   font-weight: 500;
+  text-decoration: none;
+  color: #333;
+}
+
+.todo-title:hover {
+  color: #646cff;
+}
+
+.todo-title-btn {
+  font-weight: 500;
+  color: #333;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-size: 1rem;
+}
+
+.todo-title-btn:hover {
+  color: #646cff;
 }
 
 .todo-description {
@@ -236,4 +257,128 @@ button:disabled {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Drawer */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 90vw;
+  background-color: #fff;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  line-height: 1;
+}
+
+.drawer-close:hover {
+  color: #333;
+}
+
+.drawer-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.drawer-section {
+  margin-top: 1.5rem;
+}
+
+.drawer-section h3 {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.saving-indicator {
+  font-size: 0.75rem;
+  color: #888;
+  margin-left: 0.5rem;
+}
+
+.todo-meta {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.todo-meta .status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.todo-meta .status.completed {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.todo-meta .status.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.category-badge {
+  padding: 0.25rem 0.5rem;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #495057;
+}
+
+.todo-full-description {
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.timestamp {
+  font-size: 0.875rem;
+  color: #888;
+  margin: 0.25rem 0;
 }

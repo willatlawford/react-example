@@ -10,6 +10,9 @@ export default function ViewTodosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [filterCategory, setFilterCategory] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/categories`)
@@ -43,6 +46,9 @@ export default function ViewTodosPage() {
 
       const updated = await res.json();
       setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      if (selectedTodo?.id === updated.id) {
+        setSelectedTodo(updated);
+      }
     } catch (err) {
       console.error("Failed to update todo:", err);
     }
@@ -57,6 +63,9 @@ export default function ViewTodosPage() {
       if (!res.ok) throw new Error("Failed to delete todo");
 
       setTodos((prev) => prev.filter((t) => t.id !== id));
+      if (selectedTodo?.id === id) {
+        setSelectedTodo(null);
+      }
     } catch (err) {
       console.error("Failed to delete todo:", err);
     }
@@ -65,6 +74,39 @@ export default function ViewTodosPage() {
   const getCategoryName = (categoryId: number | null) => {
     if (!categoryId) return "No category";
     return categories.find((c) => c.id === categoryId)?.name ?? "Unknown";
+  };
+
+  const openDrawer = (todo: Todo) => {
+    setSelectedTodo(todo);
+    setEditingTitle(todo.title);
+  };
+
+  const closeDrawer = () => {
+    setSelectedTodo(null);
+    setEditingTitle("");
+  };
+
+  const saveTitle = async () => {
+    if (!selectedTodo || editingTitle === selectedTodo.title) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/todos/${selectedTodo.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: editingTitle }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update todo");
+
+      const updated = await res.json();
+      setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setSelectedTodo(updated);
+    } catch (err) {
+      console.error("Failed to update todo:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (loading) {
@@ -104,7 +146,12 @@ export default function ViewTodosPage() {
                 onChange={() => toggleComplete(todo)}
               />
               <div className="todo-content">
-                <span className="todo-title">{todo.title}</span>
+                <button
+                  className="todo-title-btn"
+                  onClick={() => openDrawer(todo)}
+                >
+                  {todo.title}
+                </button>
                 {todo.description && (
                   <span className="todo-description">{todo.description}</span>
                 )}
@@ -122,6 +169,71 @@ export default function ViewTodosPage() {
           ))}
         </ul>
       )}
+
+      {/* Drawer overlay */}
+      {selectedTodo && (
+        <div className="drawer-overlay" onClick={closeDrawer} />
+      )}
+
+      {/* Drawer */}
+      <div className={`drawer ${selectedTodo ? "open" : ""}`}>
+        {selectedTodo && (
+          <>
+            <div className="drawer-header">
+              <h2>Todo Details</h2>
+              <button className="drawer-close" onClick={closeDrawer}>
+                &times;
+              </button>
+            </div>
+            <div className="drawer-content">
+              <div className="form-group">
+                <label htmlFor="edit-title">Title</label>
+                <input
+                  id="edit-title"
+                  type="text"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveTitle();
+                  }}
+                />
+                {isSaving && <span className="saving-indicator">Saving...</span>}
+              </div>
+
+              <div className="todo-meta">
+                <span
+                  className={`status ${selectedTodo.completed ? "completed" : "pending"}`}
+                >
+                  {selectedTodo.completed ? "Completed" : "Pending"}
+                </span>
+                <span className="category-badge">
+                  {getCategoryName(selectedTodo.category_id)}
+                </span>
+              </div>
+
+              {selectedTodo.description && (
+                <div className="drawer-section">
+                  <h3>Description</h3>
+                  <p className="todo-full-description">
+                    {selectedTodo.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="drawer-section">
+                <h3>Timestamps</h3>
+                <p className="timestamp">
+                  Created: {new Date(selectedTodo.created_at).toLocaleString()}
+                </p>
+                <p className="timestamp">
+                  Updated: {new Date(selectedTodo.updated_at).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
